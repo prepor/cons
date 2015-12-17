@@ -1,16 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta http-equiv="x-ua-compatible" content="ie=edge">
-        <title>Condo Monitoring</title>
-        <link rel="stylesheet" href="/static/vendor/bootstrap.min.css">
-    </head>
-    <body>
-        <div class="container-fluid" id="main"></div>
-        <script src="/static/cljs/main.js" type="text/javascript"></script>
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
-        <script src="/static/vendor/bootstrap.min.js"></script>
-    </body>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Condo Monitoring</title>
+    <link rel="stylesheet" href="/static/vendor/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/condo.css">
+  </head>
+  <body>
+    <div class="container-fluid" id="main"></div>
+    <script src="/static/cljs/main.js" type="text/javascript"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="/static/vendor/bootstrap.min.js"></script>
+    <script>
+      $(document).ready(function() {
+        $(function () {
+          $('[data-toggle="tooltip"]').tooltip();
+        })
+      });
+    </script>
+  </body>
 </html>

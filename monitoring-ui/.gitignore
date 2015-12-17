@@ -2,3 +2,7 @@ resources/public/out
 resources/public/static/cljs
 target
 figwheel_server.log
+*.iml
+.lein-repl-history
+.nrepl-port
+.idea
