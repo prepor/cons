@@ -13,11 +13,9 @@ type t = {
   auth_config : (string, string) List.Assoc.t option
 }
 
-type container = Id of string | Name of string
+type container = { id : string; spec : Spec.t }
 
-let container_to_string = function
-  | Id v -> v
-  | Name v -> v
+let container_to_string {id} = id
 
 module AuthPair = struct
   type t = {
@@ -86,7 +84,10 @@ let receive_image_id t image =
 let stop t container =
   let container' = (container_to_string container) in
   L.debug "Stop container %s" container';
-  let uri = make_uri t Spec.Image.(sprintf "/containers/%s/stop" container') in
+  let query_params = match container.spec.Spec.kill_timeout with
+    | Some t -> [("t", (string_of_int t))]
+    | None -> [] in
+  let uri = make_uri t Spec.Image.(sprintf "/containers/%s/stop" container') ~query_params in
   Utils.HTTP.post uri ~parser:Fn.ignore
 
 module CreateContainer = struct
@@ -167,7 +168,7 @@ let rename_old_container t spec =
               |> fun uri -> Uri.add_query_param' uri ("name", new_name) in
     Utils.HTTP.post uri ~parser:Fn.ignore >>| function
     | Error err ->
-      L.error "Renaming error (it can be ok) of %s: %s" n (Utils.of_exn err);
+      L.error "Renaming error (it can be ok) of %s: %s" n (Exn.to_string err);
       Ok ();
     | Ok () -> Ok ()
 
@@ -196,7 +197,7 @@ let start t spec =
   receive_image_id t i >>=? fun image_id ->
   (* rename_old_container t spec >>= fun _ -> *)
   create_container t spec image_id >>=? fun container ->
-  let container' = Id container in
+  let container' = { id = container; spec = spec } in
   (start_container t spec container >>=? fun () ->
    receive_mapping t spec container) >>= function
   | Ok mapping -> Ok (container', mapping) |> return

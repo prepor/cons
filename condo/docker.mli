@@ -3,7 +3,7 @@ open Core.Std
 
 type t
 
-type container = Id of string | Name of string
+type container
 
 val container_to_string : container -> string
 

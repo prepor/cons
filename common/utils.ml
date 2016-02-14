@@ -3,8 +3,6 @@ open Async.Std
 
 module A = Async.Std
 
-let of_exn exn = exn |> sexp_of_exn |> Sexp.to_string_hum
-
 let random_str length =
   let buf = Bigbuffer.create length in
   let gen_char () = (match Random.int(26 + 26 + 10) with
@@ -17,8 +15,6 @@ let random_str length =
   done;
   Bigbuffer.contents buf
 
-let exn_to_string exn = exn |> sexp_of_exn |> Sexp.to_string_hum
-
 let err_result_to_exn = function
   | Ok res -> Ok res
   | Error e -> Error (Error.to_exn e)
@@ -26,6 +22,26 @@ let err_result_to_exn = function
 let yojson_to_result = function
   | `Ok v -> Ok v
   | `Error s -> Error (Failure s)
+
+let failure fmt =
+  ksprintf (fun msg -> (Failure msg)) fmt
+
+module Yojson_assoc = struct
+  module String = struct
+    type t = (string * string) list [@@deriving show]
+
+    let of_yojson = function
+      | `Assoc xs as json->
+        let f acc = (function
+            | (k, `String v) -> (k, v)::acc
+            | _ -> raise Exit) in
+        (try `Ok (List.fold xs ~init:[] ~f) with
+         | Exit -> `Error (sprintf "Can't parse as Assoc.List %s" (Yojson.Safe.to_string json)))
+      | json -> `Error (sprintf "Can't parse as Assoc.List %s" (Yojson.Safe.to_string json))
+    let to_yojson t =
+      `Assoc (List.Assoc.map t (fun v -> `String v))
+  end
+end
 
 module Deferred = struct
   let all_or_error' deferreds =
@@ -49,17 +65,21 @@ end
 module HTTP = struct
   exception BadStatus of Cohttp.Code.status_code * string
 
-  let body_empty body =
-    Cohttp_async.Body.is_empty body >>= function
-    | true -> return `Empty
-    | false -> Cohttp_async.Body.to_string body >>| fun str -> `Body str
+  let body_empty status body =
+    match status with
+    | `No_content -> return `Empty
+    | `Not_modified -> return `Empty
+    | _ ->
+      Cohttp_async.Body.is_empty body >>= function
+      | true -> return `Empty
+      | false -> Cohttp_async.Body.to_string body >>| fun str -> `Body str
 
   let not_200_as_error (resp, body) =
     match Cohttp.Response.status resp with
     | #Cohttp.Code.success_status -> Ok (resp, body) |> return
     | `Not_modified -> Ok (resp, body) |> return
     | status ->
-      body_empty body >>| function
+      body_empty status body >>| function
       | `Empty -> Error (BadStatus (status, "[empty body]"))
       | `Body s -> Error (BadStatus (status, s))
 
@@ -78,12 +98,12 @@ module HTTP = struct
 
     let do_req uri res = try_with res >>=? not_200_as_error >>= function
       | Error err ->
-        L.error "Request %s failed: %s" (Uri.to_string uri) (of_exn err);
+        L.error "Request %s failed: %s" (Uri.to_string uri) (Exn.to_string err);
         Error err |> return
       | Ok (resp, body) ->
         L.debug "Request %s success: %s"
           (Uri.to_string uri) (Cohttp.Response.sexp_of_t resp |> Sexp.to_string_hum);
-        body_empty body >>| function
+        body_empty (Cohttp.Response.status resp) body >>| function
         | `Empty -> parse ""
         | `Body s -> parse s in
     handler do_req
@@ -182,4 +202,28 @@ module Mount = struct
     |> List.filter_map ~f:(function
         | [| Some _; Some device; Some mountpoint |] -> Some (device, mountpoint)
         | _ -> None)
+end
+
+module Edn = struct
+  open! Sexp
+  let rec sexp_of_t (edn : Edn.t) =
+    match edn with
+    | `Keyword (Some prefix, v) -> List [(Atom "keyword"); (Atom (prefix ^ "/" ^ v))]
+    | `Keyword (None, v) -> List [(Atom "keyword"); (Atom v)]
+    | `Symbol (Some prefix, v) -> List [(Atom "symbol"); (Atom (prefix ^ "/" ^ v))]
+    | `Symbol (None, v) -> List [(Atom "symbol"); (Atom v)]
+    | `Assoc xs -> List ((Atom "assoc")::(List.map xs (fun (k, v) -> List [sexp_of_t k; sexp_of_t v])))
+    | `List xs -> List ((Atom "list")::(List.map xs sexp_of_t))
+    | `Vector xs -> List ((Atom "vector")::(List.map xs sexp_of_t))
+    | `Set xs -> List ((Atom "set")::(List.map xs sexp_of_t))
+    | `Char v -> List [(Atom "char"); (Atom v)]
+    | `Decimal v -> List [(Atom "decimal"); (Atom v)]
+    | `BigInt v -> List [(Atom "bigint"); (Atom v)]
+    | `Tag (Some prefix, v, form) -> List [(Atom "keyword"); (Atom (prefix ^ "/" ^ v)); (sexp_of_t form)]
+    | `Tag (None, v, form) -> List [(Atom "keyword"); (Atom v); (sexp_of_t form)]
+    | `String v -> List [(Atom "string"); (Atom v)]
+    | `Int v -> List [(Atom "int"); (Atom (string_of_int v))]
+    | `Float v -> List [(Atom "int"); (Atom (string_of_float v))]
+    | `Bool v -> List [(Atom "bool"); (Atom (string_of_bool v))]
+    | `Null -> List [(Atom "null")]
 end

@@ -5,7 +5,7 @@ set -ex
 mkdir -p release
 rm -rf release/*
 
-TAG=`oasis query version`
+TAG=`cat VERSION`
 SHA=`git rev-parse --short HEAD`
 VERSION="$TAG ($SHA)"
 
@@ -17,11 +17,11 @@ docker build -t condo:$TAG ./
 CONTAINER=`docker run -d -e "VERSION=$VERSION" condo:$TAG`
 docker wait $CONTAINER
 
-docker cp $CONTAINER:/opt/condo/_build/src/condo.native release/condo_${TAG}-x86_64_linux
+docker cp $CONTAINER:/opt/condo/_build/condo/condo.native release/condo_${TAG}-x86_64_linux
 docker cp $CONTAINER:/opt/condo/_build/monitoring/condo_monitoring.native release/condo_monitoring_${TAG}-x86_64_linux
 
-make clean
-VERSION=${VERSION} make
+# make clean
+VERSION=${VERSION} make condo_native monitoring_native
 
 cp condo.native release/condo_${TAG}-x86_64_osx
 cp condo_monitoring.native release/condo_monitoring_${TAG}-x86_64_osx

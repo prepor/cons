@@ -113,7 +113,7 @@ module Watcher = struct
     let {Consul.CatalogService.id} = service in
     Result.try_with (fun () -> Yojson.Safe.from_string value) |> return >>= function
     | Error err ->
-      L.error "Error while reading state json for service %s: %s" id (Utils.of_exn err);
+      L.error "Error while reading state json for service %s: %s" id (Exn.to_string err);
       return t
     | Ok state ->
       let instance' = make_instance service state in

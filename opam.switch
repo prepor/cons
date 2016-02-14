@@ -1,0 +1,15 @@
+async	113.33.00	root
+cmdliner	0.9.8	installed
+cohttp	0.20.0	root
+core	113.33.00	root
+dispatch	0.3.0	root
+edn	0.1	root	path	https://github.com/prepor/edn.git
+mustache	2.1.0	root
+ppx_deriving	3.3	root
+ppx_deriving_yojson	2.4	root
+ppx_getenv	1.1	root
+ppx_let	113.33.00	installed
+ppx_sexp_conv	113.33.00	installed
+re2	113.33.00	root
+yojson	1.3.2	root
+

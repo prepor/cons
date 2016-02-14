@@ -9,7 +9,7 @@ module HTTP : sig
   val not_200_as_error :
     Cohttp_async.Response.t * Cohttp_async.Body.t -> (Cohttp_async.Response.t * Cohttp_async.Body.t, exn) Result.t Async.Std.Deferred.t
 
-  val body_empty : Cohttp_async.Body.t -> [`Body of string | `Empty] Async.Std.Deferred.t
+  val body_empty : Cohttp.Code.status_code -> Cohttp_async.Body.t -> [`Body of string | `Empty] Async.Std.Deferred.t
 
   type http_method = Get | Post | Delete | Put
 
@@ -63,12 +63,25 @@ module Mount : sig
   val mapping : unit -> ((string * string) list, exn) Result.t Async.Std.Deferred.t
 end
 
-val of_exn : Exn.t -> string
+module Yojson_assoc : sig
+  module String : sig
+    type t = (string, string) List.Assoc.t
+    val of_yojson : Yojson.Safe.json -> [ `Ok of t | `Error of string ]
+    val to_yojson : t -> Yojson.Safe.json
+
+    val pp : Format.formatter -> t -> unit
+    val show : t -> string
+  end
+end
+
+module Edn : sig
+  val sexp_of_t : Edn.t -> Sexp.t
+end
 
 val random_str : int -> string
-
-val exn_to_string : exn -> string
 
 val err_result_to_exn : ('a, Error.t) Result.t -> ('a, exn) Result.t
 
 val yojson_to_result : [`Error of string | `Ok of 'a] -> ('a, exn) Result.t
+
+val failure : ('a, unit, string, exn) Core.Std.format4 -> 'a

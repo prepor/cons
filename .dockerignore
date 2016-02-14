@@ -1,9 +1,8 @@
-Makefile
-configure
-setup.data
 _build/
 release/
 .git/
 monitoring-ui/
 condo.native
 condo_monitoring.native
+condo.byte
+condo_monitoring.byte

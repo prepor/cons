@@ -1,14 +1,12 @@
-PKG yojson core ppx_deriving.std ppx_deriving_yojson async cohttp cohttp.async cmdliner mustache dispatch ppx_getenv re2 hex nocrypto xml-light
+PKG yojson core ppx_deriving.std ppx_deriving_yojson async cohttp cohttp.async cmdliner mustache dispatch ppx_getenv re2 edn ppx_sexp_conv ppx_let
 
-S src
-B _build/src
+S common
+B _build/common
+
+S condo
+B _build/condo
 
 S monitoring
 B _build/monitoring
 
-S sync
-B _build/sync
-
 FLG -short-paths
-
-CMT /Users/prepor/.opam/system/build/yojson.1.2.3/

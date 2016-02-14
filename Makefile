@@ -1,46 +1,17 @@
-# OASIS_START
-# DO NOT EDIT (digest: a3c674b4239234cbbe53afe090018954)
 
-SETUP = ocaml setup.ml
+OCB_FLAGS = -tag bin_annot -use-ocamlfind -tag thread -I common
+OCB = ocamlbuild $(OCB_FLAGS)
 
-build: setup.data
-	$(SETUP) -build $(BUILDFLAGS)
+condo:
+	$(OCB) -I condo condo.byte
 
-doc: setup.data build
-	$(SETUP) -doc $(DOCFLAGS)
+condo_native:
+	$(OCB) -I condo condo.native
 
-test: setup.data build
-	$(SETUP) -test $(TESTFLAGS)
+monitoring:
+	$(OCB) -I monitoring condo_monitoring.byte
 
-all:
-	$(SETUP) -all $(ALLFLAGS)
+monitoring_native:
+	$(OCB) -I monitoring condo_monitoring.native
 
-install: setup.data
-	$(SETUP) -install $(INSTALLFLAGS)
-
-uninstall: setup.data
-	$(SETUP) -uninstall $(UNINSTALLFLAGS)
-
-reinstall: setup.data
-	$(SETUP) -reinstall $(REINSTALLFLAGS)
-
-clean:
-	$(SETUP) -clean $(CLEANFLAGS)
-
-distclean:
-	$(SETUP) -distclean $(DISTCLEANFLAGS)
-
-setup.data:
-	$(SETUP) -configure $(CONFIGUREFLAGS)
-
-configure:
-	$(SETUP) -configure $(CONFIGUREFLAGS)
-
-.PHONY: build doc test all install uninstall reinstall clean distclean configure
-
-# OASIS_STOP
-
-release: clean
-	./build/build.sh
-
-.PHONY: release
+.PHONY: condo condo_native monitoring monitoring_native
