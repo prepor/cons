@@ -10,7 +10,7 @@ module RM = Utils.RunMonitor
 
 type t = {
   endpoint : Uri.t;
-  auth_config : (string, string) List.Assoc.t option
+  mutable auth_config : (string, string) List.Assoc.t option
 }
 
 type container = { id : string; spec : Spec.t }
@@ -41,6 +41,15 @@ let load_auth_config_exn config_file =
     body |> member "auths" |> to_assoc
     |> List.Assoc.map ~f:(Fn.compose json_to_base64 to_request_format) in
   Option.map ~f:load_auth_config' config_file
+
+let watch_for_config_updates t docker_auth_file =
+  let update_config config_file _s =
+    L.debug "Docker: updating auth config";
+    try
+      t.auth_config <- load_auth_config_exn config_file
+    with e ->
+      L.error "Docker: can't update auth config: %s" (Exn.to_string e) in
+  Signal.handle [Signal.hup] (update_config docker_auth_file)
 
 let create ?auth_config_file endpoint =
   { endpoint = Uri.of_string endpoint;

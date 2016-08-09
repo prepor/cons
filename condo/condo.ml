@@ -4,6 +4,11 @@ open Cmdliner
 
 module A = Async.Std
 
+(* A.Signal.terminating contains hup and we need to handle it
+   separately to update Docker config (see Docker.wait_for_config_updates) *)
+let terminating = [A.Signal.alrm; A.Signal.int; A.Signal.term;
+                   A.Signal.usr1; A.Signal.usr2]
+
 let start endpoints docker_config consul_config advertiser_config envs =
   Gc.tune ~max_overhead:0 ~space_overhead:10 ();
   Random.self_init ();
@@ -14,7 +19,7 @@ let start endpoints docker_config consul_config advertiser_config envs =
      documentation *)
   let at_shutdown _s =
     A.Shutdown.shutdown ~force:(A.after (Time.Span.of_min 30.0)) 0 in
-  A.Signal.handle A.Signal.terminating ~f:at_shutdown;
+  A.Signal.handle terminating ~f:at_shutdown;
   never_returns (A.Scheduler.go ())
 
 let endpoints =

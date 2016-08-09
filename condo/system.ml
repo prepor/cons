@@ -16,7 +16,9 @@ type consul_config = {
 }
 
 let start_docker {docker_endpoint; docker_auth_file} =
-  Docker.create ?auth_config_file:docker_auth_file docker_endpoint
+  let docker = Docker.create ?auth_config_file:docker_auth_file docker_endpoint in
+  Docker.watch_for_config_updates docker docker_auth_file;
+  docker
 
 let start_consul {consul_endpoint} =
   Consul.create consul_endpoint
