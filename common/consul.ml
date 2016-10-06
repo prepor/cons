@@ -65,7 +65,7 @@ let requests_loop parser uri monitor w =
                | Ok parsed -> (match last_res with
                    | Some last_res' when last_res' = parsed -> Error (`SameValue index2)
                    | _ -> Ok (parsed, index2))
-               | Error error -> Error (`ParsingError (index2, error))))
+               | Error error -> Error (`ParsingError (index2, error, body'))))
       | status ->
         ignore_read () >>| fun () ->
         Error (`BadStatus status) in
@@ -93,8 +93,9 @@ let requests_loop parser uri monitor w =
       | `UnknownIndex ->
         L.error "Consul watcher %s: none index, try again" uri_s;
         try_again ()
-      | `ParsingError (index', err) ->
-        L.error "Consul watcher %s: parsing error, try again" (Exn.to_string err);
+      | `ParsingError (index', err, input) ->
+         L.error "Consul watcher %s: parsing error, try again" (Exn.to_string err);
+         L.debug "Offending input: %s" input;
         loop last_res (Some index')
       | `BadStatus status ->
         L.error "Consul watcher %s: bad status %s, try again" uri_s (Cohttp.Code.string_of_status status);
@@ -115,25 +116,42 @@ let key t k =
   let uri = make_uri t (Filename.concat "/v1/kv"  k) in
   Uri.with_query uri [("raw", [])] |> watch_uri t parse_kv_body
 
-module KvBody = struct
+module KvBodyParsing = struct
   type t = {
     modify_index : int [@key "ModifyIndex"];
     key : string [@key "Key"];
     flags : int [@key "Flags"];
-    value : string [@key "Value"];
-  } [@@deriving yojson { strict = false }, show, sexp]
+    value : string option [@key "Value"];
+  } [@@deriving yojson { strict = false }]
 
-  type t_list = t list [@@deriving yojson, show]
+  type t_list = t list [@@deriving yojson]
+end
+
+module KvBody = struct
+  type t = {
+    modify_index : int;
+    key : string;
+    flags : int;
+    value : string;
+  } [@@deriving show, sexp]
 end
 
 let parse_kv_recurse_body body =
   let open Result in
   try_with (fun () -> Yojson.Safe.from_string body)
   >>= fun body ->
-  KvBody.t_list_of_yojson body |> Utils.str_err_to_exn
-  >>| fun l ->
-  List.map l ~f:(fun ({KvBody.value} as v) ->
-      KvBody.{v with value = Utils_base64.decode value})
+  KvBodyParsing.t_list_of_yojson body |> Utils.str_err_to_exn
+  >>| (fun lst ->
+    List.filter_map
+      lst
+      ~f:(fun ({KvBodyParsing.value} as v) ->
+           Option.map
+             value
+             ~f:(fun value' ->
+               KvBody.{modify_index = v.KvBodyParsing.modify_index;
+                       key = v.KvBodyParsing.key;
+                       flags = v.KvBodyParsing.flags;
+                       value = Utils_base64.decode value'})))
 
 let prefix_diff (changes, closer) =
   let (r, w) = Pipe.create () in
