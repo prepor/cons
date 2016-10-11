@@ -65,7 +65,7 @@ let requests_loop parser uri monitor w =
                | Ok parsed -> (match last_res with
                    | Some last_res' when last_res' = parsed -> Error (`SameValue index2)
                    | _ -> Ok (parsed, index2))
-               | Error error -> Error (`ParsingError (index2, error))))
+               | Error error -> Error (`ParsingError (index2, error, body'))))
       | status ->
         ignore_read () >>| fun () ->
         Error (`BadStatus status) in
@@ -93,8 +93,9 @@ let requests_loop parser uri monitor w =
       | `UnknownIndex ->
         L.error "Consul watcher %s: none index, try again" uri_s;
         try_again ()
-      | `ParsingError (index', err) ->
-        L.error "Consul watcher %s: parsing error, try again" (Exn.to_string err);
+      | `ParsingError (index', err, input) ->
+         L.error "Consul watcher %s: parsing error, try again" (Exn.to_string err);
+         L.debug "Offending input: %s" input;
         loop last_res (Some index')
       | `BadStatus status ->
         L.error "Consul watcher %s: bad status %s, try again" uri_s (Cohttp.Code.string_of_status status);
@@ -124,6 +125,17 @@ module KvBody = struct
   } [@@deriving yojson { strict = false }, show, sexp]
 
   type t_list = t list [@@deriving yojson, show]
+  let t_list_of_yojson json =
+    let open Result in
+    try_with (fun () -> Yojson.Safe.Util.to_list json)
+    |> (map_error ~f:Exn.to_string)
+    >>| (List.filter_map
+           ~f:(fun el ->
+             match of_yojson el with
+             | Ok t -> Some t
+             | Error err ->
+                L.debug "Skip invalid kv item in kv list: %s" err;
+                None))
 end
 
 let parse_kv_recurse_body body =
