@@ -5,7 +5,7 @@ condo
 Condo is a simple idempotent supervisor for Docker containers. It can be used as
 basic brick to build reliable and declarative systems without complex and smart
 schedulers like Kubernetes, but in combination with tools like nginx-proxy,
-consul-template, docker-registrator
+consul-template, docker-.
 
 ## Features
 
@@ -31,7 +31,7 @@ consul-template, docker-registrator
 
 ## Quickstart
 
-condo is compiled into native code, but primary distribution method is docker, of course.
+Condo is compiled into native code, but primary distribution method is docker, of course.
 
 Note: you can always see help by executing `docker run prepor/condo:v0.10.1 --help`
 
@@ -43,15 +43,15 @@ Let's start nginx by condo:
     mkdir -p /tmp/condo_specs && echo '{:spec {:Image "nginx:1.11.4-alpine"}}' > /tmp/condo_specs/nginx.edn
     docker run -v /tmp/condo_specs:/var/lib/condo -v /var/run/docker.sock:/var/run/docker.sock -ti prepor/condo:v0.10.1
 
-You will see Wait -> Stable logs messages. It means that our container is successfully started.
+You will see Wait -> Stable logs messages. It means that our container has successfully started.
 
 Now we will try to deploy new version of this image:
 
     echo '{:spec {:Image "nginx:oops-alpine"} :deploy [:After 5]}' > /tmp/condo_specs/nginx.edn
     
-Oops, there is a typo and we have error "Tag oops-alpine not found in repository" and current state now is TryAgainNext. Condo will try to deploy this spec untill it will be successful or new specification arrives. And note that we've still had running nginx:1.11.5-alpine. It's because we specify `:deploy [:After 5]` option, and new container tries to start in parallel with the previous one.
+Oops, there is a typo and we have error "Tag oops-alpine not found in repository" and current state now is TryAgainNext. Condo will try to deploy this spec untill it is successful or new specification arrives. And note that we've still had running nginx:1.11.5-alpine. It's because we specify `:deploy [:After 5]` option, and new container tries to start in parallel with the previous one.
 
-Let's fix typo:
+Let's fix the typo:
 
     echo '{:spec {:Image "nginx:1.11.5-alpine"} :deploy [:After 5]}' > /tmp/condo_specs/nginx.edn
     
@@ -61,7 +61,7 @@ That's, basically, core functionality of condo ;)
 
 ## Specification format
 
-Condo watch for *.edn files in all directories defined as PREFIXes via command line interface.
+Condo watches for *.edn files in all directories defined as PREFIXes via command line interface.
 
 It has only one required parameter `:spec`. It contains docker container
 description in a format
@@ -73,12 +73,12 @@ The only required field inside this description is `:Image`.
 
 Optional parameters:
 * `:deploy` (default `[:Before]`). Can be `[:Before]` or `[:After n]` where `n`
-  is a number of seconds before stop previous container after the successful start of
+  is a number of seconds before stopping previous container after the successful start of
   the new one.
-* `:health-timeout` in seconds (default 10). How long condo will wait for passed
-  healthchecks
+* `:health-timeout` in seconds (default 10). It's how long condo will wait for passed
+  healthchecks.
 * `:stop-timeout` in seconds (default 10). It will be passed into `/stop` docker
-  operation. It's how long it will wait before force-stop of container
+  operation. It's how long it will wait before force-stop of container.
   
 ## HTTP API
 
@@ -95,7 +95,7 @@ See `How it works` for definition of state
 
 ## Real-world setups
 
-There are some examples of combining of condo with other tools. It continues
+There are some examples of combining condo with other tools. It proceeds
 our Quickstart section.
 
 ### consul-template
@@ -125,7 +125,7 @@ Now we can deploy nginx via curl! ;)
 
     curl -XPUT localhost:8500/v1/kv/versions/nginx -d '1.11.4-alpine'
     
-We can add this line, for example, to CI and deploy (and undeploy) new versions
+We can add this line, for example, to CI and both deploy and undeploy new versions
 of application manually or automatically.
 
 You can also do service discovery via ENV variables or support HA postgres
@@ -168,13 +168,13 @@ registries, for example, consul.
          ' > /tmp/condo_specs/registrator.edn 
          
 It will register nginx-service which started at random port in consul. Now this
-information can be used by some external load balancer
+information can be used by some external load balancer.
  
 ## Self-deploying
 
-Condo supports special specification file -- `self.edn`. After it was updated condo suspends any other updates and starts new container by this specification, and after that, gracefully stops itself.
+Condo supports special specification file -- `self.edn`. After it is updated, condo suspends all other updates and starts new container by this specification, and after that, gracefully stops itself.
 
-Beware, format of this specification is different, it contains only docker-container specification (which usually inside `:spec keyword`).
+Be careful, the format of this specification is different, because it contains only docker-container specification (which is usually inside `:spec keyword`).
 
 Example: 
 
@@ -187,15 +187,15 @@ Example:
 ## Best practices
 
 * Define healthchecks. Without it, condo considers container as successfully
-  started even it was crashed in a second
-* Use restart strategies. Condo doesn't monitor container after it successfully
+  started even if it was crashed in a second
+* Use restart strategies. Condo doesn't monitor container after it has successfully
   started. But docker daemon does. You can restart containers by
   `:RestartPolicy` option of `HostConfig`, for example `:RestartPolicy {:Name
   "on-failure"}`
   
 ## How it works
 
-One of the main reasons why condo exists it's because deploy tool should be
+One of the main reasons why condo exists is because deploy tool should be
 simple and understandable by all users. Not sure that anyone really knows what
 Kubernetes does in each case (1 500 000 lines of code by the way!). Condo is
 basically simple state machine for each service:
